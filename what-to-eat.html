@@ -589,8 +589,17 @@ function initGoogleAuth() {
       driveState.fileId = d.fileId;
       driveState.userEmail = d.userEmail;
       setSyncStatus('syncing', 'Connecting…');
+      // Safety timeout -- if loadFromDrive hangs for any reason, drop to signed-out
+      const authTimeout = setTimeout(() => {
+        if (document.getElementById('syncDot')?.classList.contains('syncing')) {
+          driveState.accessToken = null;
+          driveState.fileId = null;
+          saveDriveState();
+          setSyncStatus('', 'Not signed in');
+        }
+      }, 8000);
       // Verify token still valid by loading from Drive
-      loadFromDrive();
+      loadFromDrive().finally(() => clearTimeout(authTimeout));
     } catch(e) {
       localStorage.removeItem('wte_drive');
     }
@@ -696,13 +705,11 @@ async function loadFromDrive() {
       { headers: { Authorization: 'Bearer ' + driveState.accessToken } }
     );
     if (resp.status === 401) {
-      // Token expired -- clear it and silently re-authenticate
+      // Token expired -- clear it and drop to signed-out state
       driveState.accessToken = null;
       driveState.fileId = null;
       saveDriveState();
       setSyncStatus('', 'Not signed in');
-      // Try silent re-auth via GSI
-      trysilentReauth();
       return;
     }
     if (resp.status === 404) {
@@ -727,31 +734,6 @@ async function loadFromDrive() {
   }
 }
 
-function trysilentReauth() {
-  // Attempt a silent token refresh using GSI prompt:none
-  // If it succeeds the user won't see anything; if it fails they stay signed out
-  try {
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      prompt: '',
-      callback: async (resp) => {
-        if (resp.error || !resp.access_token) {
-          // Silent re-auth failed -- user needs to sign in manually
-          setSyncStatus('', 'Not signed in');
-          return;
-        }
-        driveState.accessToken = resp.access_token;
-        await findOrCreateDriveFile();
-        await loadFromDrive();
-        saveDriveState();
-      }
-    });
-    client.requestAccessToken({ prompt: '' });
-  } catch(e) {
-    setSyncStatus('', 'Not signed in');
-  }
-}
 
 // ── SAVE TO DRIVE ──
 async function saveToDrive() {
