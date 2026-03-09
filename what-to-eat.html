@@ -657,27 +657,25 @@ function saveDriveState() {
 // ── FIND OR CREATE FILE ──
 async function findOrCreateDriveFile() {
   try {
-    // Search owned files first
-    const ownedResp = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'+and+trashed=false+'me'+in+owners&fields=files(id,name)`,
+    // Search ALL matching files (owned + shared) and pick the largest/newest
+    // to avoid creating duplicates when multiple devices are in use
+    const resp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'+and+trashed=false&fields=files(id,name,size,modifiedTime,owners)&orderBy=modifiedTime+desc`,
       { headers: { Authorization: 'Bearer ' + driveState.accessToken } }
     );
-    const ownedData = await ownedResp.json();
-    if (ownedData.files && ownedData.files.length > 0) {
-      driveState.fileId = ownedData.files[0].id;
+    const data = await resp.json();
+    if (data.files && data.files.length > 0) {
+      // Prefer owned files first, then most recently modified
+      const owned = data.files.filter(f => f.owners && f.owners.some(o => o.me));
+      const best = owned.length > 0 ? owned[0] : data.files[0];
+      driveState.fileId = best.id;
+      // If there are duplicates, log it but don't delete — user should clean up manually
+      if (data.files.length > 1) {
+        console.warn('Multiple what-to-eat-data.json files found in Drive. Using most recent:', best.id);
+      }
       return;
     }
-    // Search shared files (e.g. wife's device finding the owner's file)
-    const sharedResp = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'+and+trashed=false+and+sharedWithMe=true&fields=files(id,name)`,
-      { headers: { Authorization: 'Bearer ' + driveState.accessToken } }
-    );
-    const sharedData = await sharedResp.json();
-    if (sharedData.files && sharedData.files.length > 0) {
-      driveState.fileId = sharedData.files[0].id;
-      return;
-    }
-    // Nothing found — create a new file (first-time owner setup)
+    // Nothing found — create a new file (first-time setup only)
     const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
       method: 'POST',
       headers: {
@@ -688,6 +686,7 @@ async function findOrCreateDriveFile() {
     });
     const createData = await createResp.json();
     driveState.fileId = createData.id;
+    saveDriveState();
   } catch(e) {
     setSyncStatus('error', 'Drive error');
   }
@@ -1127,19 +1126,31 @@ function handleVersionTap() {
 
 function openDevPanel() {
   const driveInfo = `Token: ${driveState.accessToken ? 'present' : 'null'} | File ID: ${driveState.fileId || 'null'}`;
-  const localInfo = `wte_state: ${localStorage.getItem('wte_state') ? Math.round(localStorage.getItem('wte_state').length/1024)+'kb' : 'empty'} | wte_drive: ${localStorage.getItem('wte_drive') || 'empty'}`;
+  const wteState = localStorage.getItem('wte_state');
+  const localRestaurants = wteState ? (JSON.parse(wteState).restaurants || []).length : 0;
+  const localInfo = `wte_state: ${wteState ? Math.round(wteState.length/1024)+'kb, '+localRestaurants+' restaurants' : 'empty'} | wte_drive: ${localStorage.getItem('wte_drive') ? 'present' : 'empty'}`;
+  const memInfo = `Memory: ${state.restaurants.length} restaurants loaded`;
   showModal(`
     <div class="modal-header">
       <div class="modal-title">Developer Tools</div>
       <button class="icon-btn" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:0.75rem;color:var(--text3);font-family:monospace;word-break:break-all;margin-bottom:12px">${driveInfo}</p>
-      <p style="font-size:0.75rem;color:var(--text3);font-family:monospace;word-break:break-all;margin-bottom:16px">${localInfo}</p>
+      <p style="font-size:0.75rem;color:var(--text3);font-family:monospace;word-break:break-all;margin-bottom:4px">${driveInfo}</p>
+      <p style="font-size:0.75rem;color:var(--text3);font-family:monospace;word-break:break-all;margin-bottom:4px">${localInfo}</p>
+      <p style="font-size:0.75rem;color:var(--text3);font-family:monospace;word-break:break-all;margin-bottom:16px">${memInfo}</p>
+      <div id="devLog" style="font-size:0.72rem;color:var(--text2);font-family:monospace;background:var(--surface2);border-radius:6px;padding:8px;margin-bottom:16px;min-height:40px;max-height:120px;overflow-y:auto;word-break:break-all"></div>
       <div class="setting-row" style="border-bottom:none;flex-direction:column;align-items:flex-start;gap:10px">
         <div>
+          <div class="setting-label">Test Drive Pull</div>
+          <div class="setting-sub">Fetch the Drive file and show what's in it without applying it.</div>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="devTestPull()">Test Pull</button>
+      </div>
+      <div class="setting-row" style="border-bottom:none;flex-direction:column;align-items:flex-start;gap:10px;margin-top:12px">
+        <div>
           <div class="setting-label">Clear Local Cache</div>
-          <div class="setting-sub">Removes locally stored data and reloads from Drive. Use if the app is showing stale data.</div>
+          <div class="setting-sub">Removes locally stored data and reloads from Drive.</div>
         </div>
         <button class="btn btn-danger" style="width:100%" onclick="devClearCache()">Clear Cache & Reload</button>
       </div>
@@ -1152,6 +1163,44 @@ function openDevPanel() {
       </div>
     </div>
   `);
+}
+
+function devLog(msg) {
+  const el = document.getElementById('devLog');
+  if (el) el.innerHTML += msg + '<br>';
+}
+
+async function devTestPull() {
+  const el = document.getElementById('devLog');
+  if (el) el.innerHTML = '';
+  devLog('Starting test pull...');
+  if (!driveState.accessToken) { devLog('ERROR: No access token'); return; }
+  devLog('Token present');
+  if (!driveState.fileId) {
+    devLog('No file ID, searching...');
+    await findOrCreateDriveFile();
+  }
+  devLog('File ID: ' + (driveState.fileId || 'STILL NULL'));
+  if (!driveState.fileId) return;
+  try {
+    devLog('Fetching file...');
+    const resp = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${driveState.fileId}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + driveState.accessToken } }
+    );
+    devLog('Status: ' + resp.status);
+    if (!resp.ok) { devLog('ERROR: ' + resp.status); return; }
+    const text = await resp.text();
+    devLog('Response length: ' + text.length + ' chars');
+    try {
+      const data = JSON.parse(text);
+      devLog('Restaurants in file: ' + (data.restaurants || []).length);
+      devLog('First restaurant: ' + (data.restaurants?.[0]?.name || 'none'));
+      devLog('Last restaurant: ' + (data.restaurants?.[data.restaurants.length-1]?.name || 'none'));
+    } catch(e) { devLog('JSON parse error: ' + e.message); }
+  } catch(e) {
+    devLog('Fetch error: ' + e.message);
+  }
 }
 
 function devClearCache() {
