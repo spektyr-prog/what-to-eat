@@ -585,6 +585,7 @@ function initGoogleAuth() {
   if (saved) {
     try {
       const d = JSON.parse(saved);
+      if (!d.accessToken) return; // No valid token saved, stay signed out
       driveState.accessToken = d.accessToken;
       driveState.fileId = d.fileId;
       driveState.userEmail = d.userEmail;
