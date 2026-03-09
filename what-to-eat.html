@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>What to Eat v1.1</title>
+<title>What to Eat v1.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -397,9 +397,61 @@
   .history-entry-meta { font-size: 0.73rem; color: var(--text3); margin-top: 2px; }
   .history-entry-date { font-size: 0.75rem; color: var(--text3); text-align: right; flex-shrink: 0; }
   .history-empty { text-align: center; padding: 32px 0; color: var(--text3); font-size: 0.9rem; }
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  /* ── HOURS EDITOR ── */
+  .hours-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .hours-row { display: flex; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); gap: 10px; }
+  .hours-row:last-child { border-bottom: none; }
+  .hours-day { width: 36px; font-size: 0.8rem; color: var(--text2); font-weight: 500; flex-shrink: 0; }
+  .hours-toggle { flex-shrink: 0; }
+  .hours-selects { display: flex; align-items: center; gap: 6px; flex: 1; }
+  .hours-selects select {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 6px; color: var(--text); font-family: var(--font-body); font-size: 0.78rem;
+    flex: 1; min-width: 0;
+  }
+  .hours-selects select:focus { outline: none; border-color: var(--accent); }
+  .hours-sep { font-size: 0.75rem; color: var(--text3); flex-shrink: 0; }
+  .hours-closed-label { font-size: 0.78rem; color: var(--text3); font-style: italic; }
+  .hours-apply-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .hours-apply-row select {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 8px; color: var(--text); font-family: var(--font-body); font-size: 0.8rem; flex: 1;
+  }
+
+  /* ── SUGGESTION CARD v1.2 ── */
+  .suggestion-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+  .suggestion-time { font-family: var(--font-display); font-size: 1.05rem; color: var(--text2); }
+  .suggestion-time.closes-soon { color: var(--accent); }
+  .suggestion-time.opens-soon { color: var(--success); }
+  .suggestion-flag-sm { font-size: 0.65rem; padding: 2px 7px; border-radius: 10px;
+    background: var(--surface3); color: var(--text3); border: 1px solid var(--border); }
+  .suggestion-flag-sm.favorite { background: rgba(232,160,69,0.1); color: var(--accent); border-color: rgba(232,160,69,0.3); }
+
+  /* ── AI IMPORT ── */
+  .import-textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; color: var(--text);
+    font-family: var(--font-body); font-size: 0.85rem; resize: vertical; min-height: 120px;
+    margin-bottom: 10px;
+  }
+  .import-textarea:focus { outline: none; border-color: var(--accent); }
+  .import-preview-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 0;
+    border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .import-preview-item:last-child { border-bottom: none; }
+  .import-name { font-size: 0.9rem; font-family: var(--font-display); flex: 1; min-width: 120px; }
+  .import-preview-item select {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 4px 6px; color: var(--text); font-family: var(--font-body); font-size: 0.75rem;
+  }
+  .import-loading { text-align: center; padding: 24px; color: var(--text2); font-size: 0.9rem; }
+  .import-loading-spinner {
+    width: 28px; height: 28px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── DRIVE SYNC ── */
   .sync-status {
@@ -438,7 +490,7 @@
   <header>
     <div style="display:flex;flex-direction:column;line-height:1">
       <div class="logo">🍽 What to Eat</div>
-      <div style="font-size:0.65rem;color:var(--text3);margin-top:3px;font-family:var(--font-body);letter-spacing:0.05em">v1.1</div>
+      <div style="font-size:0.65rem;color:var(--text3);margin-top:3px;font-family:var(--font-body);letter-spacing:0.05em">v1.2</div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <div class="header-actions">
@@ -793,15 +845,65 @@ function getWeight(restaurant) {
   return cyclesAgo / effectiveN;
 }
 
+// ══════════════════════════════════════════
+// HOURS HELPERS
+// ══════════════════════════════════════════
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const TIME_SLOTS = [];
+for (let h = 0; h < 24; h++) {
+  for (let m = 0; m < 60; m += 30) {
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const label = `${h12}:${m === 0 ? '00' : '30'} ${ampm}`;
+    const value = h * 60 + m; // minutes since midnight
+    TIME_SLOTS.push({ label, value });
+  }
+}
+
+function formatTime12(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${m === 0 ? '00' : '30'} ${ampm}`;
+}
+
+function defaultHours() {
+  // Default: open 11 AM to 10 PM every day
+  return DAYS.map(() => ({ open: true, start: 660, end: 1320 }));
+}
+
+function getRestaurantStatus(r) {
+  // Returns { status: 'open'|'closes_soon'|'opens_soon'|'closed'|'unknown', display: string }
+  if (!r.hours || r.hours.length !== 7) return { status: 'unknown', display: 'Hours unknown' };
+  const now = new Date();
+  const dayIdx = now.getDay();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const today = r.hours[dayIdx];
+  if (!today || !today.open) return { status: 'closed', display: 'Closed today' };
+  const { start, end } = today;
+  if (nowMins >= start && nowMins < end) {
+    // Open — check if closing soon (within 60 min)
+    if (end - nowMins <= 60) return { status: 'closes_soon', display: `Closes ${formatTime12(end)}` };
+    return { status: 'open', display: `Closes ${formatTime12(end)}` };
+  }
+  if (nowMins < start && start - nowMins <= 30) {
+    return { status: 'opens_soon', display: `Opens ${formatTime12(start)}` };
+  }
+  return { status: 'closed', display: 'Closed now' };
+}
+
 function pickRestaurants() {
   const pool = state.restaurants.filter(r => {
     if (!state.filters.foodTypes.includes(r.foodType)) return false;
     if (!state.filters.diningStyles.includes(r.diningStyle)) return false;
+    // Filter by hours: only open, opens_soon, or unknown
+    const status = getRestaurantStatus(r).status;
+    if (status === 'closed') return false;
     return true;
   });
   if (pool.length === 0) return [];
 
-  // weighted random pick without replacement
   const picked = [];
   const available = [...pool];
   const count = Math.min(3, available.length);
@@ -810,7 +912,6 @@ function pickRestaurants() {
     const weights = available.map(r => getWeight(r));
     const total = weights.reduce((a,b) => a+b, 0);
     if (total === 0) {
-      // all weight zero — pick by uniform random
       const idx = Math.floor(Math.random() * available.length);
       picked.push(available.splice(idx, 1)[0]);
     } else {
@@ -899,7 +1000,7 @@ function renderSuggestions() {
       <div class="main-wrap">
         <div class="empty-state">
           <h3>No matches</h3>
-          <p>Try adjusting your filters or add more restaurants.</p>
+          <p>No restaurants are currently open matching your filters. Try again later or adjust your filters.</p>
         </div>
         <button class="reroll-btn" onclick="showMain()">← Back</button>
       </div>`;
@@ -907,14 +1008,21 @@ function renderSuggestions() {
   }
   let cards = picks.map(r => {
     const w = Math.round(getWeight(r) * 100);
+    const { status, display } = getRestaurantStatus(r);
+    const timeClass = status === 'closes_soon' ? 'closes-soon' : status === 'opens_soon' ? 'opens-soon' : '';
+    const flagLabel = r.flag === 'regular' ? 'Favorite' : 'Normal';
+    const flagClass = r.flag === 'regular' ? 'favorite' : '';
     return `
       <div class="suggestion-card" onclick="selectRestaurant(${JSON.stringify(r).replace(/"/g,'&quot;')})">
-        <div>
+        <div style="flex:1;min-width:0">
           <div class="suggestion-name">${r.name}</div>
           <div class="suggestion-meta">${r.foodType} · ${r.diningStyle}</div>
           <div class="weight-bar"><div class="weight-bar-fill" style="width:${w}%"></div></div>
         </div>
-        <span class="suggestion-flag ${r.flag}">${r.flag}</span>
+        <div class="suggestion-right">
+          <span class="suggestion-time ${timeClass}">${display}</span>
+          <span class="suggestion-flag-sm ${flagClass}">${flagLabel}</span>
+        </div>
       </div>`;
   }).join('');
   el.innerHTML = `
@@ -1076,20 +1184,21 @@ function openRestaurants() {
   renderRestaurantsModal();
 }
 
-function renderRestaurantsModal(editId = null) {
+function renderRestaurantsModal() {
   const list = state.restaurants.map(r => {
     const w = state.selectedAt[r.id] !== undefined
       ? `${Math.round(getWeight(r)*100)}%`
       : '100%';
+    const flagLabel = r.flag === 'regular' ? 'Favorite' : 'Normal';
+    const hoursLabel = r.hours ? 'Hours set' : 'Hours unknown';
     return `
       <div class="restaurant-item">
         <div>
           <div class="restaurant-item-name">${r.name}</div>
-          <div class="restaurant-item-meta">${r.foodType} · ${r.diningStyle} · <span style="color:${r.flag==='regular'?'var(--accent)':'var(--text3)'}">${r.flag}</span> · weight: ${w}</div>
+          <div class="restaurant-item-meta">${r.foodType} · ${r.diningStyle} · <span style="color:${r.flag==='regular'?'var(--accent)':'var(--text3)'}">${flagLabel}</span> · ${hoursLabel} · weight: ${w}</div>
         </div>
         <div class="restaurant-item-actions">
           <button class="item-btn" onclick="openEditRestaurant('${r.id}')">Edit</button>
-          <button class="item-btn del" onclick="deleteRestaurant('${r.id}')">✕</button>
         </div>
       </div>`;
   }).join('') || '<p style="color:var(--text3);font-size:0.85rem;padding:12px 0">No restaurants added yet.</p>';
@@ -1104,13 +1213,95 @@ function renderRestaurantsModal(editId = null) {
     </div>
     <div class="modal-footer">
       <button class="btn btn-primary" onclick="openAddRestaurant()">+ Add Restaurant</button>
+      <button class="btn btn-ghost" onclick="openImportRestaurants()">⬆ Import</button>
     </div>
   `);
+}
+
+function buildHoursEditor(hours) {
+  const h = hours || defaultHours();
+  const timeOptions = TIME_SLOTS.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+
+  const applyRow = `
+    <div class="hours-apply-row">
+      <span style="font-size:0.78rem;color:var(--text2);white-space:nowrap">Apply to all:</span>
+      <select id="applyStart">${timeOptions}</select>
+      <span class="hours-sep">to</span>
+      <select id="applyEnd">${timeOptions}</select>
+      <button class="btn-sm" onclick="applyHoursToAll()">Apply</button>
+    </div>`;
+
+  const rows = DAYS.map((day, i) => {
+    const d = h[i];
+    const startOpts = TIME_SLOTS.map(s => `<option value="${s.value}" ${s.value===d.start?'selected':''}>${s.label}</option>`).join('');
+    const endOpts = TIME_SLOTS.map(s => `<option value="${s.value}" ${s.value===d.end?'selected':''}>${s.label}</option>`).join('');
+    return `
+      <div class="hours-row">
+        <span class="hours-day">${day}</span>
+        <div class="hours-toggle">
+          <div class="toggle ${d.open?'on':''}" onclick="toggleDayOpen(${i})" id="dayToggle${i}"></div>
+        </div>
+        <div class="hours-selects" id="daySelects${i}" style="${d.open?'':'display:none'}">
+          <select id="dayStart${i}" onchange="updateDayHours(${i})">${startOpts}</select>
+          <span class="hours-sep">to</span>
+          <select id="dayEnd${i}" onchange="updateDayHours(${i})">${endOpts}</select>
+        </div>
+        ${!d.open ? `<span class="hours-closed-label">Closed</span>` : ''}
+      </div>`;
+  }).join('');
+
+  return `${applyRow}${rows}`;
+}
+
+// Temp hours state during editing
+let editingHours = null;
+
+function toggleDayOpen(i) {
+  editingHours[i].open = !editingHours[i].open;
+  const toggle = document.getElementById(`dayToggle${i}`);
+  const selects = document.getElementById(`daySelects${i}`);
+  // Rebuild just that row
+  const row = toggle.closest('.hours-row');
+  const closed = row.querySelector('.hours-closed-label');
+  if (editingHours[i].open) {
+    toggle.className = 'toggle on';
+    selects.style.display = '';
+    if (closed) closed.remove();
+  } else {
+    toggle.className = 'toggle';
+    selects.style.display = 'none';
+    if (!closed) {
+      const lbl = document.createElement('span');
+      lbl.className = 'hours-closed-label';
+      lbl.textContent = 'Closed';
+      row.appendChild(lbl);
+    }
+  }
+}
+
+function updateDayHours(i) {
+  const s = document.getElementById(`dayStart${i}`);
+  const e = document.getElementById(`dayEnd${i}`);
+  if (s) editingHours[i].start = parseInt(s.value);
+  if (e) editingHours[i].end = parseInt(e.value);
+}
+
+function applyHoursToAll() {
+  const start = parseInt(document.getElementById('applyStart').value);
+  const end = parseInt(document.getElementById('applyEnd').value);
+  editingHours.forEach((d, i) => {
+    d.start = start; d.end = end;
+    const s = document.getElementById(`dayStart${i}`);
+    const e = document.getElementById(`dayEnd${i}`);
+    if (s) s.value = start;
+    if (e) e.value = end;
+  });
 }
 
 function openAddRestaurant() {
   const foodOptions = state.foodTypes.map(t => `<option value="${t}">${t}</option>`).join('');
   const styleOptions = state.diningStyles.map(s => `<option value="${s}">${s}</option>`).join('');
+  editingHours = defaultHours();
   showModal(`
     <div class="modal-header">
       <div class="modal-title">Add Restaurant</div>
@@ -1122,10 +1313,13 @@ function openAddRestaurant() {
       <div class="field"><label>Dining Style</label><select id="rStyle">${styleOptions}</select></div>
       <div class="field"><label>Flag</label>
         <select id="rFlag">
-          <option value="occasional">Occasional</option>
-          <option value="regular">Regular</option>
+          <option value="occasional">Normal</option>
+          <option value="regular">Favorite</option>
         </select>
       </div>
+      <hr class="section-divider">
+      <div class="setting-label" style="margin-bottom:10px">Hours</div>
+      ${buildHoursEditor(editingHours)}
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="openRestaurants()">Cancel</button>
@@ -1138,12 +1332,22 @@ function openAddRestaurant() {
 function saveNewRestaurant() {
   const name = document.getElementById('rName').value.trim();
   if (!name) { showToast('Please enter a name'); return; }
+  // Sync any unsaved select values
+  editingHours.forEach((d, i) => {
+    if (d.open) {
+      const s = document.getElementById(`dayStart${i}`);
+      const e = document.getElementById(`dayEnd${i}`);
+      if (s) d.start = parseInt(s.value);
+      if (e) d.end = parseInt(e.value);
+    }
+  });
   const r = {
     id: Date.now().toString(),
     name,
     foodType: document.getElementById('rFood').value,
     diningStyle: document.getElementById('rStyle').value,
-    flag: document.getElementById('rFlag').value
+    flag: document.getElementById('rFlag').value,
+    hours: editingHours
   };
   state.restaurants.push(r);
   saveState();
@@ -1155,6 +1359,7 @@ function saveNewRestaurant() {
 function openEditRestaurant(id) {
   const r = state.restaurants.find(x => x.id === id);
   if (!r) return;
+  editingHours = r.hours ? JSON.parse(JSON.stringify(r.hours)) : defaultHours();
   const foodOptions = state.foodTypes.map(t => `<option value="${t}" ${t===r.foodType?'selected':''}>${t}</option>`).join('');
   const styleOptions = state.diningStyles.map(s => `<option value="${s}" ${s===r.diningStyle?'selected':''}>${s}</option>`).join('');
   showModal(`
@@ -1168,10 +1373,15 @@ function openEditRestaurant(id) {
       <div class="field"><label>Dining Style</label><select id="rStyle">${styleOptions}</select></div>
       <div class="field"><label>Flag</label>
         <select id="rFlag">
-          <option value="occasional" ${r.flag==='occasional'?'selected':''}>Occasional</option>
-          <option value="regular" ${r.flag==='regular'?'selected':''}>Regular</option>
+          <option value="occasional" ${r.flag==='occasional'?'selected':''}>Normal</option>
+          <option value="regular" ${r.flag==='regular'?'selected':''}>Favorite</option>
         </select>
       </div>
+      <hr class="section-divider">
+      <div class="setting-label" style="margin-bottom:10px">Hours</div>
+      ${buildHoursEditor(editingHours)}
+      <hr class="section-divider">
+      <button class="btn btn-danger" style="width:100%;margin-top:4px" onclick="confirmDeleteRestaurant('${id}')">Delete Restaurant</button>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="openRestaurants()">Cancel</button>
@@ -1185,14 +1395,44 @@ function saveEditRestaurant(id) {
   if (!r) return;
   const name = document.getElementById('rName').value.trim();
   if (!name) { showToast('Please enter a name'); return; }
+  // Sync any unsaved select values
+  editingHours.forEach((d, i) => {
+    if (d.open) {
+      const s = document.getElementById(`dayStart${i}`);
+      const e = document.getElementById(`dayEnd${i}`);
+      if (s) d.start = parseInt(s.value);
+      if (e) d.end = parseInt(e.value);
+    }
+  });
   r.name = name;
   r.foodType = document.getElementById('rFood').value;
   r.diningStyle = document.getElementById('rStyle').value;
   r.flag = document.getElementById('rFlag').value;
+  r.hours = editingHours;
   saveState();
   renderMain();
   openRestaurants();
   showToast('Saved');
+}
+
+function confirmDeleteRestaurant(id) {
+  const r = state.restaurants.find(x => x.id === id);
+  if (!r) return;
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Delete Restaurant</div>
+      <button class="icon-btn" onclick="openEditRestaurant('${id}')">←</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text2);font-size:0.9rem;line-height:1.6">
+        Are you sure you want to delete <strong style="color:var(--text)">${r.name}</strong>? This cannot be undone.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="openEditRestaurant('${id}')">Cancel</button>
+      <button class="btn btn-danger" onclick="deleteRestaurant('${id}')">Delete</button>
+    </div>
+  `);
 }
 
 function deleteRestaurant(id) {
@@ -1204,7 +1444,143 @@ function deleteRestaurant(id) {
   showToast('Deleted');
 }
 
-// ── SETTINGS MODAL ──
+// ── AI IMPORT ──
+function openImportRestaurants() {
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">AI Import</div>
+      <button class="icon-btn" onclick="openRestaurants()">←</button>
+    </div>
+    <div class="modal-body">
+      <p class="info-text" style="margin-bottom:10px">Paste a list of restaurant names below, one per line. Claude will suggest food type, dining style, and hours for each one.</p>
+      <textarea id="importRaw" class="import-textarea" placeholder="Cracker Barrel&#10;Prost&#10;Pizza Hut&#10;Meddy's"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="openRestaurants()">Cancel</button>
+      <button class="btn btn-primary" onclick="runAIImport()">Analyze with AI</button>
+    </div>
+  `);
+}
+
+async function runAIImport() {
+  const raw = document.getElementById('importRaw').value.trim();
+  if (!raw) { showToast('Please enter at least one restaurant name'); return; }
+  const names = raw.split('\n').map(n => n.trim()).filter(Boolean);
+  if (names.length === 0) { showToast('No valid names found'); return; }
+
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">AI Import</div>
+      <button class="icon-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-loading">
+        <div class="import-loading-spinner"></div>
+        Analyzing ${names.length} restaurant${names.length > 1 ? 's' : ''}…
+      </div>
+    </div>
+  `);
+
+  const foodTypeList = state.foodTypes.join(', ');
+  const diningStyleList = state.diningStyles.join(', ');
+
+  const prompt = `You are helping categorize restaurants for a restaurant suggestion app. For each restaurant name below, provide:
+1. foodType: pick the closest match from: ${foodTypeList}
+2. diningStyle: pick the closest match from: ${diningStyleList}
+3. flag: "regular" if it seems like a frequent/casual spot, "occasional" otherwise
+4. hours: an array of 7 objects (Sun through Sat), each with { "open": true/false, "start": minutes_since_midnight, "end": minutes_since_midnight }. Use your best knowledge of typical hours for this restaurant. If truly unknown, set open:true, start:660, end:1320 (11am-10pm).
+
+Restaurants to categorize:
+${names.map((n, i) => `${i + 1}. ${n}`).join('\n')}
+
+Respond ONLY with a JSON array, no other text, no markdown. Example format:
+[{"name":"Example","foodType":"Italian","diningStyle":"Sit-down / Dine-in","flag":"occasional","hours":[{"open":true,"start":660,"end":1320},{"open":true,"start":660,"end":1320},{"open":true,"start":660,"end":1320},{"open":true,"start":660,"end":1320},{"open":true,"start":660,"end":1320},{"open":true,"start":660,"end":1380},{"open":true,"start":660,"end":1380}]}]`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await response.json();
+    const text = data.content.map(c => c.text || '').join('').replace(/```json|```/g, '').trim();
+    const results = JSON.parse(text);
+    showImportPreview(results, names);
+  } catch(e) {
+    showToast('AI analysis failed — please try again');
+    openImportRestaurants();
+  }
+}
+
+function showImportPreview(results, names) {
+  const foodOptions = state.foodTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+  const styleOptions = state.diningStyles.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  // Merge names in case AI reordered
+  const merged = names.map((name, i) => {
+    const match = results.find(r => r.name.toLowerCase().trim() === name.toLowerCase().trim()) || results[i] || {};
+    return { name, foodType: match.foodType || state.foodTypes[0], diningStyle: match.diningStyle || state.diningStyles[0], flag: match.flag || 'occasional', hours: match.hours || defaultHours() };
+  });
+
+  const rows = merged.map((r, i) => {
+    const fOpts = state.foodTypes.map(t => `<option value="${t}" ${t===r.foodType?'selected':''}>${t}</option>`).join('');
+    const sOpts = state.diningStyles.map(s => `<option value="${s}" ${s===r.diningStyle?'selected':''}>${s}</option>`).join('');
+    return `
+      <div class="import-preview-item" data-name="${r.name.replace(/"/g,'&quot;')}">
+        <span class="import-name">${r.name}</span>
+        <select id="iFood${i}">${fOpts}</select>
+        <select id="iStyle${i}">${sOpts}</select>
+        <select id="iFlag${i}">
+          <option value="occasional" ${r.flag==='occasional'?'selected':''}>Normal</option>
+          <option value="regular" ${r.flag==='regular'?'selected':''}>Favorite</option>
+        </select>
+      </div>`;
+  }).join('');
+
+  // Store hours for import
+  window._importHours = merged.map(r => r.hours);
+
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Review Import (${merged.length})</div>
+      <button class="icon-btn" onclick="openImportRestaurants()">←</button>
+    </div>
+    <div class="modal-body">
+      <p class="info-text" style="margin-bottom:12px">Review and correct any details before importing. Hours can be edited after import.</p>
+      ${rows}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="openImportRestaurants()">Back</button>
+      <button class="btn btn-primary" onclick="confirmAIImport(${merged.length})">Import All</button>
+    </div>
+  `);
+}
+
+function confirmAIImport(count) {
+  const hours = window._importHours || [];
+  const items = document.querySelectorAll('.import-preview-item');
+  items.forEach((item, i) => {
+    const name = item.getAttribute('data-name');
+    if (!name) return;
+    if (state.restaurants.find(r => r.name.toLowerCase() === name.toLowerCase())) return;
+    state.restaurants.push({
+      id: (Date.now() + i).toString(),
+      name,
+      foodType: document.getElementById(`iFood${i}`)?.value || state.foodTypes[0],
+      diningStyle: document.getElementById(`iStyle${i}`)?.value || state.diningStyles[0],
+      flag: document.getElementById(`iFlag${i}`)?.value || 'occasional',
+      hours: hours[i] || defaultHours()
+    });
+  });
+  saveState();
+  renderMain();
+  openRestaurants();
+  showToast('Import complete');
+}
 function openSettings() {
   renderSettingsModal();
 }
@@ -1248,8 +1624,8 @@ function renderSettingsModal() {
       </div>
       <div class="setting-row">
         <div>
-          <div class="setting-label">Regular Modifier</div>
-          <div class="setting-sub">% of Avoid Repeats cycles for "Regular" restaurants</div>
+          <div class="setting-label">Favorite Modifier</div>
+          <div class="setting-sub">% of Avoid Repeats cycles for "Favorite" restaurants</div>
         </div>
         <div class="number-input">
           <button onclick="adjustSetting('regularModifier',-10)">−</button>
