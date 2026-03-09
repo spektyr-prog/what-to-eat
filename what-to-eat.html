@@ -595,17 +595,27 @@ function saveDriveState() {
 // ── FIND OR CREATE FILE ──
 async function findOrCreateDriveFile() {
   try {
-    // Search for existing file
-    const searchResp = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'+and+trashed=false&fields=files(id,name)`,
+    // Search owned files first
+    const ownedResp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'+and+trashed=false+'me'+in+owners&fields=files(id,name)`,
       { headers: { Authorization: 'Bearer ' + driveState.accessToken } }
     );
-    const searchData = await searchResp.json();
-    if (searchData.files && searchData.files.length > 0) {
-      driveState.fileId = searchData.files[0].id;
+    const ownedData = await ownedResp.json();
+    if (ownedData.files && ownedData.files.length > 0) {
+      driveState.fileId = ownedData.files[0].id;
       return;
     }
-    // Create new file
+    // Search shared files (e.g. wife's device finding the owner's file)
+    const sharedResp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'+and+trashed=false+and+sharedWithMe=true&fields=files(id,name)`,
+      { headers: { Authorization: 'Bearer ' + driveState.accessToken } }
+    );
+    const sharedData = await sharedResp.json();
+    if (sharedData.files && sharedData.files.length > 0) {
+      driveState.fileId = sharedData.files[0].id;
+      return;
+    }
+    // Nothing found — create a new file (first-time owner setup)
     const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
       method: 'POST',
       headers: {
