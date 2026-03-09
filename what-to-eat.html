@@ -719,11 +719,15 @@ async function loadFromDrive() {
 
 // ── SAVE TO DRIVE ──
 async function saveToDrive() {
-  if (!driveState.accessToken || !driveState.fileId) return;
+  if (!driveState.accessToken) return;
   setSyncStatus('syncing', 'Saving…');
   try {
+    // Ensure we have a file ID before trying to save
+    if (!driveState.fileId) await findOrCreateDriveFile();
+    if (!driveState.fileId) { setSyncStatus('error', 'Drive error'); return; }
+
     const data = buildSaveData();
-    await fetch(
+    const resp = await fetch(
       `https://www.googleapis.com/upload/drive/v3/files/${driveState.fileId}?uploadType=media`,
       {
         method: 'PATCH',
@@ -734,6 +738,21 @@ async function saveToDrive() {
         body: JSON.stringify(data)
       }
     );
+    if (resp.status === 401) {
+      // Token expired -- reset and prompt re-sign-in
+      setSyncStatus('error', 'Session expired — please sign in again');
+      driveState.accessToken = null;
+      driveState.fileId = null;
+      saveDriveState();
+      return;
+    }
+    if (resp.status === 404) {
+      // File was deleted -- clear ID and retry once
+      driveState.fileId = null;
+      await findOrCreateDriveFile();
+      return saveToDrive();
+    }
+    if (!resp.ok) { setSyncStatus('error', 'Save failed'); return; }
     setSyncStatus('synced', driveState.userEmail || 'Synced');
   } catch(e) {
     setSyncStatus('error', 'Save failed');
