@@ -490,7 +490,7 @@
   <header>
     <div style="display:flex;flex-direction:column;line-height:1">
       <div class="logo">🍽 What to Eat</div>
-      <div style="font-size:0.65rem;color:var(--text3);margin-top:3px;font-family:var(--font-body);letter-spacing:0.05em">v1.2</div>
+      <div id="versionTap" style="font-size:0.65rem;color:var(--text3);margin-top:3px;font-family:var(--font-body);letter-spacing:0.05em;cursor:default;user-select:none" onclick="handleVersionTap()">v1.2</div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <div class="header-actions">
@@ -1106,6 +1106,65 @@ function showConfirmation(restaurant) {
     state.currentView = 'main';
     renderMain();
   }, 2500);
+}
+
+
+// ══════════════════════════════════════════
+// HIDDEN DEV PANEL
+// ══════════════════════════════════════════
+let _versionTapCount = 0;
+let _versionTapTimer = null;
+
+function handleVersionTap() {
+  _versionTapCount++;
+  clearTimeout(_versionTapTimer);
+  _versionTapTimer = setTimeout(() => { _versionTapCount = 0; }, 1500);
+  if (_versionTapCount >= 5) {
+    _versionTapCount = 0;
+    openDevPanel();
+  }
+}
+
+function openDevPanel() {
+  const driveInfo = `Token: ${driveState.accessToken ? 'present' : 'null'} | File ID: ${driveState.fileId || 'null'}`;
+  const localInfo = `wte_state: ${localStorage.getItem('wte_state') ? Math.round(localStorage.getItem('wte_state').length/1024)+'kb' : 'empty'} | wte_drive: ${localStorage.getItem('wte_drive') || 'empty'}`;
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Developer Tools</div>
+      <button class="icon-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.75rem;color:var(--text3);font-family:monospace;word-break:break-all;margin-bottom:12px">${driveInfo}</p>
+      <p style="font-size:0.75rem;color:var(--text3);font-family:monospace;word-break:break-all;margin-bottom:16px">${localInfo}</p>
+      <div class="setting-row" style="border-bottom:none;flex-direction:column;align-items:flex-start;gap:10px">
+        <div>
+          <div class="setting-label">Clear Local Cache</div>
+          <div class="setting-sub">Removes locally stored data and reloads from Drive. Use if the app is showing stale data.</div>
+        </div>
+        <button class="btn btn-danger" style="width:100%" onclick="devClearCache()">Clear Cache & Reload</button>
+      </div>
+      <div class="setting-row" style="border-bottom:none;flex-direction:column;align-items:flex-start;gap:10px;margin-top:12px">
+        <div>
+          <div class="setting-label">Clear Auth & Cache</div>
+          <div class="setting-sub">Clears everything including sign-in state. You will need to sign in again.</div>
+        </div>
+        <button class="btn btn-danger" style="width:100%" onclick="devClearAll()">Clear Everything & Reload</button>
+      </div>
+    </div>
+  `);
+}
+
+function devClearCache() {
+  localStorage.removeItem('wte_state');
+  showToast('Cache cleared — reloading…');
+  setTimeout(() => location.reload(), 800);
+}
+
+function devClearAll() {
+  localStorage.removeItem('wte_state');
+  localStorage.removeItem('wte_drive');
+  showToast('All data cleared — reloading…');
+  setTimeout(() => location.reload(), 800);
 }
 
 // ══════════════════════════════════════════
