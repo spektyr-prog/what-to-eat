@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What to Eat v1.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    --bg: #0f0e0c;
+    --surface: #1a1814;
+    --surface2: #242018;
+    --surface3: #2e2a22;
+    --border: #3a342a;
+    --accent: #e8a045;
+    --accent2: #c97d2a;
+    --accent-glow: rgba(232,160,69,0.15);
+    --text: #f0e8d8;
+    --text2: #a89880;
+    --text3: #6a5e50;
+    --success: #6bbf7a;
+    --danger: #c06060;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+    --radius: 12px;
+    --transition: 0.2s ease;
+  }
+  [data-theme="light"] {
+    --bg: #f5f0e8;
+    --surface: #fffdf8;
+    --surface2: #f0ebe0;
+    --surface3: #e8e0d0;
+    --border: #d8cfc0;
+    --accent: #c97d2a;
+    --accent2: #a8621a;
+    --accent-glow: rgba(201,125,42,0.12);
+    --text: #2a2018;
+    --text2: #6a5a40;
+    --text3: #a09080;
+    --success: #4a9a5a;
+    --danger: #a04040;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  /* NOISE TEXTURE */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.4;
+  }
+
+  /* ── LAYOUT ── */
+  .app { width: 100%; max-width: 480px; padding: 0 16px 40px; position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0 16px;
+  }
+  .logo { font-family: var(--font-display); font-size: 1.5rem; color: var(--accent); letter-spacing: -0.02em; }
+  .header-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2); border-radius: 8px; width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all var(--transition); font-size: 1rem;
+  }
+  .icon-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--accent); }
+
+  /* ── FILTER BAR ── */
+  .filter-bar { margin-bottom: 20px; position: relative; }
+  .filter-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2); border-radius: 8px; padding: 8px 14px;
+    cursor: pointer; font-family: var(--font-body); font-size: 0.85rem;
+    display: flex; align-items: center; gap: 6px; transition: all var(--transition);
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active { border-color: var(--accent); color: var(--accent); }
+  .filter-badge {
+    background: var(--accent); color: #1a1410; border-radius: 10px;
+    padding: 1px 6px; font-size: 0.7rem; font-weight: 600;
+  }
+  .filter-dropdown {
+    position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; z-index: 100;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    display: none;
+  }
+  .filter-dropdown.open { display: block; }
+  .filter-section-title {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text3); margin-bottom: 8px; margin-top: 12px;
+  }
+  .filter-section-title:first-child { margin-top: 0; }
+  .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 4px 10px; border-radius: 20px; font-size: 0.78rem;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text2); cursor: pointer; transition: all var(--transition);
+    user-select: none;
+  }
+  .chip.checked { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+  .filter-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+  .btn-sm {
+    padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-family: var(--font-body);
+    cursor: pointer; border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text2); transition: all var(--transition);
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── MAIN BUTTON ── */
+  .main-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 50vh; gap: 24px;
+  }
+  .tagline {
+    font-family: var(--font-display); font-size: 1.1rem; color: var(--text2);
+    text-align: center; font-style: italic;
+  }
+  .eat-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #1a1208; border: none; border-radius: 16px;
+    padding: 22px 48px; font-family: var(--font-display);
+    font-size: 1.6rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 24px rgba(232,160,69,0.3), 0 1px 0 rgba(255,255,255,0.1) inset;
+    transition: all 0.15s ease; letter-spacing: -0.01em;
+    position: relative; overflow: hidden;
+  }
+  .eat-btn::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+  }
+  .eat-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(232,160,69,0.4), 0 1px 0 rgba(255,255,255,0.1) inset;
+  }
+  .eat-btn:active { transform: translateY(0); }
+
+  /* ── SUGGESTION CARDS ── */
+  .suggestions { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+  .suggestion-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    cursor: pointer; transition: all 0.18s ease;
+    display: flex; align-items: center; justify-content: space-between;
+    animation: slideIn 0.3s ease both;
+    position: relative; overflow: hidden;
+  }
+  .suggestion-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--accent); transform: scaleY(0); transition: transform 0.2s ease;
+    transform-origin: bottom;
+  }
+  .suggestion-card:hover { border-color: var(--accent); background: var(--surface2); transform: translateX(3px); }
+  .suggestion-card:hover::before { transform: scaleY(1); }
+  .suggestion-card:nth-child(1) { animation-delay: 0.05s; }
+  .suggestion-card:nth-child(2) { animation-delay: 0.12s; }
+  .suggestion-card:nth-child(3) { animation-delay: 0.19s; }
+  .suggestion-name { font-family: var(--font-display); font-size: 1.15rem; color: var(--text); }
+  .suggestion-meta { font-size: 0.75rem; color: var(--text3); margin-top: 2px; }
+  .suggestion-flag {
+    font-size: 0.65rem; padding: 2px 7px; border-radius: 10px;
+    background: var(--surface3); color: var(--text3); border: 1px solid var(--border);
+  }
+  .suggestion-flag.regular { background: rgba(232,160,69,0.1); color: var(--accent); border-color: rgba(232,160,69,0.3); }
+
+  .reroll-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2); border-radius: var(--radius); padding: 14px 18px;
+    font-family: var(--font-display); font-size: 1rem; cursor: pointer;
+    transition: all var(--transition); width: 100%; text-align: center;
+    animation: slideIn 0.3s 0.26s ease both;
+  }
+  .reroll-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── CONFIRMATION ── */
+  .confirmation {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 50vh; text-align: center; gap: 12px;
+    animation: fadeIn 0.3s ease;
+  }
+  .confirm-icon { font-size: 3rem; }
+  .confirm-title { font-family: var(--font-display); font-size: 1.8rem; color: var(--accent); }
+  .confirm-sub { color: var(--text2); font-size: 0.9rem; }
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); }
+  .empty-state h3 { font-family: var(--font-display); color: var(--text2); margin-bottom: 8px; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 200; display: flex; align-items: flex-end; justify-content: center;
+    padding: 16px; backdrop-filter: blur(4px);
+  }
+  .modal-overlay.center { align-items: center; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px 20px 20px 20px; width: 100%; max-width: 480px;
+    max-height: 90vh; overflow-y: auto;
+    animation: modalUp 0.25s ease;
+  }
+  @keyframes modalUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-header {
+    padding: 20px 20px 0; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: var(--surface); z-index: 1;
+    padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  .modal-title { font-family: var(--font-display); font-size: 1.3rem; }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 0 20px 20px; display: flex; gap: 10px; }
+
+  /* ── FORMS ── */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 0.78rem; color: var(--text2); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .field input, .field select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; color: var(--text);
+    font-family: var(--font-body); font-size: 0.9rem; transition: border-color var(--transition);
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .field select option { background: var(--surface2); }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 0.9rem; }
+  .toggle-sub { font-size: 0.75rem; color: var(--text3); margin-top: 2px; }
+  .toggle {
+    width: 44px; height: 24px; background: var(--surface3); border-radius: 12px;
+    cursor: pointer; position: relative; transition: background var(--transition);
+    border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; border-radius: 50%; background: var(--text3);
+    transition: all var(--transition);
+  }
+  .toggle.on::after { left: 22px; background: #1a1208; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    flex: 1; padding: 12px; border-radius: 10px; font-family: var(--font-body);
+    font-size: 0.9rem; cursor: pointer; transition: all var(--transition); font-weight: 500;
+  }
+  .btn-primary { background: var(--accent); color: #1a1208; border: none; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+  .btn-danger:hover { background: rgba(192,96,96,0.1); }
+
+  /* ── RESTAURANT LIST ── */
+  .restaurant-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .restaurant-item:last-child { border-bottom: none; }
+  .restaurant-item-name { font-size: 0.95rem; font-family: var(--font-display); }
+  .restaurant-item-meta { font-size: 0.72rem; color: var(--text3); margin-top: 1px; }
+  .restaurant-item-actions { display: flex; gap: 6px; }
+  .item-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text3); border-radius: 6px; padding: 4px 8px;
+    font-size: 0.75rem; cursor: pointer; transition: all var(--transition);
+  }
+  .item-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .item-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ── SETTINGS ── */
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { font-size: 0.9rem; }
+  .setting-sub { font-size: 0.73rem; color: var(--text3); margin-top: 2px; max-width: 200px; }
+  .number-input {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .number-input button {
+    width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text); cursor: pointer;
+    font-size: 1rem; display: flex; align-items: center; justify-content: center;
+    transition: all var(--transition);
+  }
+  .number-input button:hover { border-color: var(--accent); color: var(--accent); }
+  .number-input span { min-width: 36px; text-align: center; font-size: 0.95rem; color: var(--accent); font-weight: 600; }
+
+  /* ── SYNC ── */
+  .sync-code {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; font-family: monospace;
+    font-size: 1.2rem; letter-spacing: 0.2em; text-align: center;
+    color: var(--accent); margin: 12px 0;
+  }
+  .passphrase-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; color: var(--text);
+    font-family: monospace; font-size: 0.95rem; letter-spacing: 0.1em;
+    margin: 8px 0 12px;
+  }
+  .passphrase-input:focus { outline: none; border-color: var(--accent); }
+  .info-text { font-size: 0.8rem; color: var(--text3); line-height: 1.5; }
+  .section-divider {
+    border: none; border-top: 1px solid var(--border); margin: 16px 0;
+  }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag-item {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; color: var(--text2);
+  }
+  .tag-remove { cursor: pointer; color: var(--text3); font-size: 0.7rem; line-height: 1; }
+  .tag-remove:hover { color: var(--danger); }
+  .add-tag-row { display: flex; gap: 8px; margin-top: 10px; }
+  .add-tag-row input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; color: var(--text);
+    font-family: var(--font-body); font-size: 0.85rem;
+  }
+  .add-tag-row input:focus { outline: none; border-color: var(--accent); }
+
+  /* ── WEIGHT INDICATOR ── */
+  .weight-bar {
+    height: 3px; background: var(--surface3); border-radius: 2px;
+    margin-top: 4px; overflow: hidden; width: 80px;
+  }
+  .weight-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+
+  /* ── NAV TABS (in modals) ── */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tab {
+    padding: 8px 16px; font-size: 0.85rem; cursor: pointer; color: var(--text3);
+    border-bottom: 2px solid transparent; transition: all var(--transition); margin-bottom: -1px;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--surface3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 20px; font-size: 0.85rem;
+    color: var(--text); z-index: 999; transition: transform 0.3s ease; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── HISTORY MINI (confirmation screen) ── */
+  .history-mini {
+    margin-top: 20px; width: 100%; max-width: 300px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+  }
+  .history-mini-title {
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text3); margin-bottom: 8px;
+  }
+  .history-row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 4px 0; border-bottom: 1px solid var(--border);
+  }
+  .history-row:last-child { border-bottom: none; }
+  .history-name { font-size: 0.85rem; color: var(--text2); }
+  .history-meta { font-size: 0.72rem; color: var(--text3); }
+
+  /* ── HISTORY MODAL ── */
+  .history-entry {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .history-entry:last-child { border-bottom: none; }
+  .history-entry-num {
+    font-family: var(--font-display); font-size: 1.1rem; color: var(--text3);
+    width: 24px; flex-shrink: 0;
+  }
+  .history-entry-name { font-family: var(--font-display); font-size: 1rem; color: var(--text); }
+  .history-entry-meta { font-size: 0.73rem; color: var(--text3); margin-top: 2px; }
+  .history-entry-date { font-size: 0.75rem; color: var(--text3); text-align: right; flex-shrink: 0; }
+  .history-empty { text-align: center; padding: 32px 0; color: var(--text3); font-size: 0.9rem; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── DRIVE SYNC ── */
+  .sync-status {
+    font-size: 0.68rem; color: var(--text3); font-family: var(--font-body);
+    margin-top: 3px; display: flex; align-items: center; gap: 4px; letter-spacing: 0.02em;
+  }
+  .sync-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--text3);
+    flex-shrink: 0; transition: background 0.3s;
+  }
+  .sync-dot.synced { background: var(--success); }
+  .sync-dot.syncing { background: var(--accent); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--danger); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .drive-signin {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 60vh; gap: 16px; text-align: center; padding: 24px;
+  }
+  .drive-signin-title { font-family: var(--font-display); font-size: 1.4rem; color: var(--text); }
+  .drive-signin-sub { font-size: 0.85rem; color: var(--text2); line-height: 1.6; max-width: 300px; }
+  .google-btn {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; color: #3c3c3c; border: none; border-radius: 8px;
+    padding: 10px 20px; font-size: 0.9rem; font-weight: 500; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: box-shadow 0.2s;
+    font-family: var(--font-body);
+  }
+  .google-btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  .google-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header>
+    <div style="display:flex;flex-direction:column;line-height:1">
+      <div class="logo">🍽 What to Eat</div>
+      <div style="font-size:0.65rem;color:var(--text3);margin-top:3px;font-family:var(--font-body);letter-spacing:0.05em">v1.1</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div class="header-actions">
+        <button class="icon-btn" onclick="openHistory()" title="History">📋</button>
+        <button class="icon-btn" onclick="openRestaurants()" title="Manage Restaurants">🏪</button>
+        <button class="icon-btn" onclick="openSync()" title="Sync & Backup">🔄</button>
+        <button class="icon-btn" onclick="openSettings()" title="Settings">⚙️</button>
+      </div>
+      <div class="sync-status" id="syncStatus">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">Not signed in</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar" id="filterBar">
+    <button class="filter-btn" id="filterToggleBtn" onclick="toggleFilter()">
+      <span>🎛 Filter</span>
+      <span class="filter-badge" id="filterBadge" style="display:none"></span>
+    </button>
+    <div class="filter-dropdown" id="filterDropdown">
+      <div class="filter-section-title">Food Type</div>
+      <div class="filter-chips" id="foodChips"></div>
+      <div class="filter-section-title">Dining Style</div>
+      <div class="filter-chips" id="styleChips"></div>
+      <div class="filter-actions">
+        <button class="btn-sm" onclick="selectAllFilters()">All</button>
+        <button class="btn-sm" onclick="clearAllFilters()">None</button>
+        <button class="btn-sm" onclick="closeFilter()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div id="mainContent"></div>
+</div>
+
+<!-- Modals -->
+<div id="modalContainer"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+const DEFAULT_FOOD_TYPES = ['American','Italian','Chinese','Japanese','Mexican','Indian','Thai','Mediterranean','Fast Food','Pizza','Seafood','BBQ','Cajun'];
+
+let state = {
+  theme: 'dark',
+  restaurants: [],
+  settings: {
+    avoidRepeats: 8,
+    regularModifier: 50
+  },
+  foodTypes: [...DEFAULT_FOOD_TYPES],
+  diningStyles: ['Sit-down / Dine-in','Takeout','Delivery','Fast Food / Counter service'],
+  cycleCount: 0,
+  selectedAt: {},
+  selectionHistory: [], // [{id, name, foodType, diningStyle, timestamp}, ...] newest first
+  filters: { foodTypes: [], diningStyles: [] },
+  currentView: 'main',
+  lastPicked: null
+};
+
+// ══════════════════════════════════════════
+// GOOGLE DRIVE SYNC
+// ══════════════════════════════════════════
+const CLIENT_ID = '411226989831-1gald3di1p11d7298vhko0odg0icbmqe.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const FILE_NAME = 'what-to-eat-data.json';
+
+let driveState = {
+  accessToken: null,
+  fileId: null,
+  userEmail: null,
+  saveTimer: null
+};
+
+function setSyncStatus(status, label) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  if (!dot || !lbl) return;
+  dot.className = 'sync-dot ' + status;
+  lbl.textContent = label;
+}
+
+// ── SIGN IN ──
+function initGoogleAuth() {
+  // Try to restore token from localStorage
+  const saved = localStorage.getItem('wte_drive');
+  if (saved) {
+    try {
+      const d = JSON.parse(saved);
+      driveState.accessToken = d.accessToken;
+      driveState.fileId = d.fileId;
+      driveState.userEmail = d.userEmail;
+      setSyncStatus('syncing', 'Connecting…');
+      // Verify token still valid by loading from Drive
+      loadFromDrive();
+    } catch(e) {
+      localStorage.removeItem('wte_drive');
+    }
+  }
+}
+
+function signInWithGoogle() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { setSyncStatus('error', 'Sign-in failed'); return; }
+      driveState.accessToken = resp.access_token;
+      // Get user email
+      try {
+        const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: 'Bearer ' + resp.access_token }
+        });
+        const info = await r.json();
+        driveState.userEmail = info.email;
+      } catch(e) {}
+      setSyncStatus('syncing', 'Signing in…');
+      await findOrCreateDriveFile();
+      await loadFromDrive();
+      saveDriveState();
+      closeModal();
+      showToast('Signed in' + (driveState.userEmail ? ' as ' + driveState.userEmail : ''));
+    }
+  });
+  client.requestAccessToken();
+}
+
+function signOut() {
+  if (driveState.accessToken) {
+    google.accounts.oauth2.revoke(driveState.accessToken);
+  }
+  driveState.accessToken = null;
+  driveState.fileId = null;
+  driveState.userEmail = null;
+  localStorage.removeItem('wte_drive');
+  setSyncStatus('', 'Not signed in');
+  showToast('Signed out');
+  openSync();
+}
+
+function saveDriveState() {
+  localStorage.setItem('wte_drive', JSON.stringify({
+    accessToken: driveState.accessToken,
+    fileId: driveState.fileId,
+    userEmail: driveState.userEmail
+  }));
+}
+
+// ── FIND OR CREATE FILE ──
+async function findOrCreateDriveFile() {
+  try {
+    // Search for existing file
+    const searchResp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'+and+trashed=false&fields=files(id,name)`,
+      { headers: { Authorization: 'Bearer ' + driveState.accessToken } }
+    );
+    const searchData = await searchResp.json();
+    if (searchData.files && searchData.files.length > 0) {
+      driveState.fileId = searchData.files[0].id;
+      return;
+    }
+    // Create new file
+    const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + driveState.accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: FILE_NAME, mimeType: 'application/json' })
+    });
+    const createData = await createResp.json();
+    driveState.fileId = createData.id;
+  } catch(e) {
+    setSyncStatus('error', 'Drive error');
+  }
+}
+
+// ── LOAD FROM DRIVE ──
+async function loadFromDrive() {
+  if (!driveState.accessToken) return;
+  setSyncStatus('syncing', 'Loading…');
+  try {
+    if (!driveState.fileId) await findOrCreateDriveFile();
+    if (!driveState.fileId) { setSyncStatus('error', 'File not found'); return; }
+
+    const resp = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${driveState.fileId}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + driveState.accessToken } }
+    );
+    if (resp.status === 404) {
+      // File deleted, create fresh
+      driveState.fileId = null;
+      await findOrCreateDriveFile();
+      setSyncStatus('synced', driveState.userEmail || 'Synced');
+      return;
+    }
+    const text = await resp.text();
+    if (text && text.trim().startsWith('{')) {
+      const data = JSON.parse(text);
+      applyLoadedData(data);
+      saveLocalState();
+      renderFilters();
+      renderMain();
+    }
+    setSyncStatus('synced', driveState.userEmail || 'Synced');
+    saveDriveState();
+  } catch(e) {
+    setSyncStatus('error', 'Sync error');
+  }
+}
+
+// ── SAVE TO DRIVE ──
+async function saveToDrive() {
+  if (!driveState.accessToken || !driveState.fileId) return;
+  setSyncStatus('syncing', 'Saving…');
+  try {
+    const data = buildSaveData();
+    await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${driveState.fileId}?uploadType=media`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: 'Bearer ' + driveState.accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      }
+    );
+    setSyncStatus('synced', driveState.userEmail || 'Synced');
+  } catch(e) {
+    setSyncStatus('error', 'Save failed');
+  }
+}
+
+// Debounced save — waits 2s after last change before writing to Drive
+function scheduleDriveSave() {
+  clearTimeout(driveState.saveTimer);
+  driveState.saveTimer = setTimeout(() => saveToDrive(), 2000);
+}
+
+// ══════════════════════════════════════════
+// PERSISTENCE (local + drive)
+// ══════════════════════════════════════════
+function buildSaveData() {
+  return {
+    theme: state.theme,
+    restaurants: state.restaurants,
+    settings: state.settings,
+    foodTypes: state.foodTypes,
+    diningStyles: state.diningStyles,
+    cycleCount: state.cycleCount,
+    selectedAt: state.selectedAt,
+    selectionHistory: state.selectionHistory,
+    filters: state.filters
+  };
+}
+
+function saveLocalState() {
+  localStorage.setItem('wte_state', JSON.stringify(buildSaveData()));
+}
+
+function saveState() {
+  saveLocalState();
+  scheduleDriveSave();
+}
+
+function applyLoadedData(data) {
+  state.restaurants = data.restaurants || state.restaurants;
+  state.settings = data.settings || state.settings;
+  state.foodTypes = data.foodTypes || state.foodTypes;
+  if (!state.foodTypes || state.foodTypes.length === 0) state.foodTypes = [...DEFAULT_FOOD_TYPES];
+  state.diningStyles = data.diningStyles || state.diningStyles;
+  state.cycleCount = data.cycleCount || state.cycleCount;
+  state.selectedAt = data.selectedAt || state.selectedAt;
+  state.selectionHistory = data.selectionHistory || state.selectionHistory;
+  state.theme = data.theme || state.theme;
+  if (data.filters) state.filters = data.filters;
+  if (!state.filters.foodTypes || state.filters.foodTypes.length === 0) {
+    state.filters.foodTypes = [...state.foodTypes];
+  }
+  if (!state.filters.diningStyles || state.filters.diningStyles.length === 0) {
+    state.filters.diningStyles = [...state.diningStyles];
+  }
+  applyTheme();
+}
+
+function loadState() {
+  const raw = localStorage.getItem('wte_state');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    applyLoadedData(data);
+  } catch(e) {}
+}
+
+function exportData() {
+  const data = buildSaveData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'what-to-eat-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Exported successfully');
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      applyLoadedData(data);
+      saveState();
+      renderFilters();
+      renderMain();
+      showToast('Imported successfully');
+      closeModal();
+    } catch(e) { showToast('Import failed — invalid file'); }
+  };
+  reader.readAsText(file);
+}
+
+// ══════════════════════════════════════════
+// WEIGHTING
+// ══════════════════════════════════════════
+function getWeight(restaurant) {
+  const lastSelected = state.selectedAt[restaurant.id];
+  if (lastSelected === undefined) return 1.0;
+
+  const cyclesAgo = state.cycleCount - lastSelected;
+  const isRegular = restaurant.flag === 'regular';
+  const N = state.settings.avoidRepeats;
+  const modifier = state.settings.regularModifier / 100;
+  const effectiveN = isRegular ? Math.max(1, Math.round(N * modifier)) : N;
+
+  if (cyclesAgo === 0) return 0; // just selected
+  if (cyclesAgo >= effectiveN) return 1.0;
+  return cyclesAgo / effectiveN;
+}
+
+function pickRestaurants() {
+  const pool = state.restaurants.filter(r => {
+    if (!state.filters.foodTypes.includes(r.foodType)) return false;
+    if (!state.filters.diningStyles.includes(r.diningStyle)) return false;
+    return true;
+  });
+  if (pool.length === 0) return [];
+
+  // weighted random pick without replacement
+  const picked = [];
+  const available = [...pool];
+  const count = Math.min(3, available.length);
+
+  for (let i = 0; i < count; i++) {
+    const weights = available.map(r => getWeight(r));
+    const total = weights.reduce((a,b) => a+b, 0);
+    if (total === 0) {
+      // all weight zero — pick by uniform random
+      const idx = Math.floor(Math.random() * available.length);
+      picked.push(available.splice(idx, 1)[0]);
+    } else {
+      let rand = Math.random() * total;
+      let idx = 0;
+      for (let j = 0; j < weights.length; j++) {
+        rand -= weights[j];
+        if (rand <= 0) { idx = j; break; }
+      }
+      picked.push(available.splice(idx, 1)[0]);
+    }
+  }
+  return picked;
+}
+
+function selectRestaurant(restaurant) {
+  state.cycleCount++;
+  state.selectedAt[restaurant.id] = state.cycleCount;
+  state.lastPicked = restaurant;
+  // prepend to history, keep only most recent 10
+  state.selectionHistory.unshift({
+    id: restaurant.id,
+    name: restaurant.name,
+    foodType: restaurant.foodType,
+    diningStyle: restaurant.diningStyle,
+    timestamp: Date.now()
+  });
+  if (state.selectionHistory.length > 10) state.selectionHistory.length = 10;
+  saveState();
+  showConfirmation(restaurant);
+}
+
+// ══════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.theme);
+}
+
+function toggleTheme() {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  applyTheme();
+  saveState();
+}
+
+// ══════════════════════════════════════════
+// RENDER — MAIN
+// ══════════════════════════════════════════
+function renderMain() {
+  const el = document.getElementById('mainContent');
+  if (state.currentView === 'main') {
+    if (state.restaurants.length === 0) {
+      el.innerHTML = `
+        <div class="main-wrap">
+          <div class="empty-state">
+            <h3>No restaurants yet</h3>
+            <p>Add some restaurants to get started.</p>
+            <br>
+            <button class="btn btn-primary" style="width:auto;padding:10px 24px" onclick="openRestaurants()">Add Restaurants</button>
+          </div>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div class="main-wrap">
+          <p class="tagline">Hungry? Let fate decide.</p>
+          <button class="eat-btn" onclick="showSuggestions()">What to Eat?</button>
+        </div>`;
+    }
+  } else if (state.currentView === 'suggestions') {
+    renderSuggestions();
+  } else if (state.currentView === 'confirmation') {
+    renderConfirmation();
+  }
+}
+
+function showSuggestions() {
+  state.currentView = 'suggestions';
+  renderSuggestions();
+}
+
+function renderSuggestions() {
+  const picks = pickRestaurants();
+  const el = document.getElementById('mainContent');
+  if (picks.length === 0) {
+    el.innerHTML = `
+      <div class="main-wrap">
+        <div class="empty-state">
+          <h3>No matches</h3>
+          <p>Try adjusting your filters or add more restaurants.</p>
+        </div>
+        <button class="reroll-btn" onclick="showMain()">← Back</button>
+      </div>`;
+    return;
+  }
+  let cards = picks.map(r => {
+    const w = Math.round(getWeight(r) * 100);
+    return `
+      <div class="suggestion-card" onclick="selectRestaurant(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+        <div>
+          <div class="suggestion-name">${r.name}</div>
+          <div class="suggestion-meta">${r.foodType} · ${r.diningStyle}</div>
+          <div class="weight-bar"><div class="weight-bar-fill" style="width:${w}%"></div></div>
+        </div>
+        <span class="suggestion-flag ${r.flag}">${r.flag}</span>
+      </div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="suggestions">
+      ${cards}
+      <button class="reroll-btn" onclick="showSuggestions()">🎲 What to Eat?</button>
+    </div>`;
+}
+
+function showMain() {
+  state.currentView = 'main';
+  renderMain();
+}
+
+function showConfirmation(restaurant) {
+  state.currentView = 'confirmation';
+  const el = document.getElementById('mainContent');
+
+  const historyRows = state.selectionHistory.slice(1).map(h => {
+    const d = new Date(h.timestamp);
+    const dateStr = d.toLocaleDateString(undefined, {month:'short', day:'numeric'});
+    return `<div class="history-row">
+      <span class="history-name">${h.name}</span>
+      <span class="history-meta">${h.foodType} · ${dateStr}</span>
+    </div>`;
+  }).join('');
+
+  const historySection = historyRows ? `
+    <div class="history-mini">
+      <div class="history-mini-title">Recent</div>
+      ${historyRows}
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="confirmation">
+      <div class="confirm-icon">✅</div>
+      <div class="confirm-title">${restaurant.name}</div>
+      <div class="confirm-sub">${restaurant.foodType} · ${restaurant.diningStyle}</div>
+      <div class="confirm-sub" style="margin-top:8px;color:var(--text3);font-size:0.78rem">Enjoy your meal!</div>
+      ${historySection}
+    </div>`;
+  setTimeout(() => {
+    state.currentView = 'main';
+    renderMain();
+  }, 2500);
+}
+
+// ══════════════════════════════════════════
+// FILTERS
+// ══════════════════════════════════════════
+function renderFilters() {
+  // Only remove food type filters that no longer exist as categories
+  state.filters.foodTypes = state.filters.foodTypes.filter(t => state.foodTypes.includes(t));
+  // Only remove dining style filters that no longer exist as categories
+  state.filters.diningStyles = state.filters.diningStyles.filter(s => state.diningStyles.includes(s));
+  // Do NOT auto-add — respect user's unchecked choices
+
+  const wasOpen = document.getElementById('filterDropdown')?.classList.contains('open');
+
+  const foodEl = document.getElementById('foodChips');
+  const styleEl = document.getElementById('styleChips');
+  foodEl.innerHTML = state.foodTypes.map(t => `
+    <span class="chip ${state.filters.foodTypes.includes(t) ? 'checked' : ''}" onclick="toggleFoodFilter('${t}', event)">${t}</span>
+  `).join('');
+  styleEl.innerHTML = state.diningStyles.map(s => `
+    <span class="chip ${state.filters.diningStyles.includes(s) ? 'checked' : ''}" onclick="toggleStyleFilter(\`${s}\`, event)">${s}</span>
+  `).join('');
+  updateFilterBadge();
+
+  if (wasOpen) {
+    document.getElementById('filterDropdown').classList.add('open');
+  }
+}
+
+function toggleFoodFilter(type, event) {
+  event && event.stopPropagation();
+  const idx = state.filters.foodTypes.indexOf(type);
+  if (idx >= 0) state.filters.foodTypes.splice(idx, 1);
+  else state.filters.foodTypes.push(type);
+  saveState();
+  renderFilters();
+}
+
+function toggleStyleFilter(style, event) {
+  event && event.stopPropagation();
+  const idx = state.filters.diningStyles.indexOf(style);
+  if (idx >= 0) state.filters.diningStyles.splice(idx, 1);
+  else state.filters.diningStyles.push(style);
+  saveState();
+  renderFilters();
+}
+
+function selectAllFilters() {
+  state.filters.foodTypes = [...state.foodTypes];
+  state.filters.diningStyles = [...state.diningStyles];
+  saveState(); renderFilters();
+}
+
+function clearAllFilters() {
+  state.filters.foodTypes = [];
+  state.filters.diningStyles = [];
+  saveState(); renderFilters();
+}
+
+function updateFilterBadge() {
+  const total = state.foodTypes.length + state.diningStyles.length;
+  const active = state.filters.foodTypes.length + state.filters.diningStyles.length;
+  const badge = document.getElementById('filterBadge');
+  const btn = document.getElementById('filterToggleBtn');
+  if (active < total) {
+    badge.style.display = 'inline';
+    badge.textContent = `${total - active} off`;
+    btn.classList.add('active');
+  } else {
+    badge.style.display = 'none';
+    btn.classList.remove('active');
+  }
+}
+
+function toggleFilter() {
+  const dd = document.getElementById('filterDropdown');
+  dd.classList.toggle('open');
+}
+
+function closeFilter() {
+  document.getElementById('filterDropdown').classList.remove('open');
+}
+
+// Close filter on outside click — stopPropagation on the dropdown itself
+// prevents chip clicks from reaching this handler
+document.getElementById('filterDropdown').addEventListener('click', e => e.stopPropagation());
+document.addEventListener('click', e => {
+  const bar = document.getElementById('filterBar');
+  if (bar && !bar.contains(e.target)) {
+    document.getElementById('filterDropdown').classList.remove('open');
+  }
+});
+
+// ══════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════
+function closeModal() {
+  document.getElementById('modalContainer').innerHTML = '';
+}
+
+function showModal(html) {
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="handleOverlayClick(event)">
+      <div class="modal">${html}</div>
+    </div>`;
+}
+
+function handleOverlayClick(e) {
+  if (e.target.classList.contains('modal-overlay')) closeModal();
+}
+
+// ── RESTAURANTS MODAL ──
+function openRestaurants() {
+  renderRestaurantsModal();
+}
+
+function renderRestaurantsModal(editId = null) {
+  const list = state.restaurants.map(r => {
+    const w = state.selectedAt[r.id] !== undefined
+      ? `${Math.round(getWeight(r)*100)}%`
+      : '100%';
+    return `
+      <div class="restaurant-item">
+        <div>
+          <div class="restaurant-item-name">${r.name}</div>
+          <div class="restaurant-item-meta">${r.foodType} · ${r.diningStyle} · <span style="color:${r.flag==='regular'?'var(--accent)':'var(--text3)'}">${r.flag}</span> · weight: ${w}</div>
+        </div>
+        <div class="restaurant-item-actions">
+          <button class="item-btn" onclick="openEditRestaurant('${r.id}')">Edit</button>
+          <button class="item-btn del" onclick="deleteRestaurant('${r.id}')">✕</button>
+        </div>
+      </div>`;
+  }).join('') || '<p style="color:var(--text3);font-size:0.85rem;padding:12px 0">No restaurants added yet.</p>';
+
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Restaurants</div>
+      <button class="icon-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      ${list}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="openAddRestaurant()">+ Add Restaurant</button>
+    </div>
+  `);
+}
+
+function openAddRestaurant() {
+  const foodOptions = state.foodTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+  const styleOptions = state.diningStyles.map(s => `<option value="${s}">${s}</option>`).join('');
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Add Restaurant</div>
+      <button class="icon-btn" onclick="openRestaurants()">←</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Name</label><input id="rName" type="text" placeholder="e.g. Tony's Pizza" /></div>
+      <div class="field"><label>Food Type</label><select id="rFood">${foodOptions}</select></div>
+      <div class="field"><label>Dining Style</label><select id="rStyle">${styleOptions}</select></div>
+      <div class="field"><label>Flag</label>
+        <select id="rFlag">
+          <option value="occasional">Occasional</option>
+          <option value="regular">Regular</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="openRestaurants()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewRestaurant()">Add</button>
+    </div>
+  `);
+  document.getElementById('rName').focus();
+}
+
+function saveNewRestaurant() {
+  const name = document.getElementById('rName').value.trim();
+  if (!name) { showToast('Please enter a name'); return; }
+  const r = {
+    id: Date.now().toString(),
+    name,
+    foodType: document.getElementById('rFood').value,
+    diningStyle: document.getElementById('rStyle').value,
+    flag: document.getElementById('rFlag').value
+  };
+  state.restaurants.push(r);
+  saveState();
+  renderMain();
+  openRestaurants();
+  showToast('Restaurant added');
+}
+
+function openEditRestaurant(id) {
+  const r = state.restaurants.find(x => x.id === id);
+  if (!r) return;
+  const foodOptions = state.foodTypes.map(t => `<option value="${t}" ${t===r.foodType?'selected':''}>${t}</option>`).join('');
+  const styleOptions = state.diningStyles.map(s => `<option value="${s}" ${s===r.diningStyle?'selected':''}>${s}</option>`).join('');
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Edit Restaurant</div>
+      <button class="icon-btn" onclick="openRestaurants()">←</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Name</label><input id="rName" type="text" value="${r.name}" /></div>
+      <div class="field"><label>Food Type</label><select id="rFood">${foodOptions}</select></div>
+      <div class="field"><label>Dining Style</label><select id="rStyle">${styleOptions}</select></div>
+      <div class="field"><label>Flag</label>
+        <select id="rFlag">
+          <option value="occasional" ${r.flag==='occasional'?'selected':''}>Occasional</option>
+          <option value="regular" ${r.flag==='regular'?'selected':''}>Regular</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="openRestaurants()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditRestaurant('${id}')">Save</button>
+    </div>
+  `);
+}
+
+function saveEditRestaurant(id) {
+  const r = state.restaurants.find(x => x.id === id);
+  if (!r) return;
+  const name = document.getElementById('rName').value.trim();
+  if (!name) { showToast('Please enter a name'); return; }
+  r.name = name;
+  r.foodType = document.getElementById('rFood').value;
+  r.diningStyle = document.getElementById('rStyle').value;
+  r.flag = document.getElementById('rFlag').value;
+  saveState();
+  renderMain();
+  openRestaurants();
+  showToast('Saved');
+}
+
+function deleteRestaurant(id) {
+  state.restaurants = state.restaurants.filter(r => r.id !== id);
+  delete state.selectedAt[id];
+  saveState();
+  renderMain();
+  renderRestaurantsModal();
+  showToast('Deleted');
+}
+
+// ── SETTINGS MODAL ──
+function openSettings() {
+  renderSettingsModal();
+}
+
+function renderSettingsModal() {
+  const foodTags = state.foodTypes.map(t => `
+    <span class="tag-item">
+      ${t}
+      <span class="tag-remove" onclick="removeFoodType(\`${t}\`)">✕</span>
+    </span>`).join('');
+
+  const styles = state.diningStyles.map(s => `
+    <span class="tag-item">
+      ${s}
+      <span class="tag-remove" onclick="removeDiningStyle(\`${s}\`)">✕</span>
+    </span>`).join('');
+
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Settings</div>
+      <button class="icon-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Theme</div>
+          <div class="setting-sub">Light or dark interface</div>
+        </div>
+        <div class="toggle ${state.theme==='light'?'on':''}" id="themeToggle" onclick="toggleThemeInSettings()"></div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Avoid Repeats</div>
+          <div class="setting-sub">Cycles before a selected restaurant returns to full weight</div>
+        </div>
+        <div class="number-input">
+          <button onclick="adjustSetting('avoidRepeats',-1)">−</button>
+          <span id="avoidRepeatsVal">${state.settings.avoidRepeats}</span>
+          <button onclick="adjustSetting('avoidRepeats',1)">+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Regular Modifier</div>
+          <div class="setting-sub">% of Avoid Repeats cycles for "Regular" restaurants</div>
+        </div>
+        <div class="number-input">
+          <button onclick="adjustSetting('regularModifier',-10)">−</button>
+          <span id="regularModifierVal">${state.settings.regularModifier}%</span>
+          <button onclick="adjustSetting('regularModifier',10)">+</button>
+        </div>
+      </div>
+      <hr class="section-divider">
+      <div class="setting-label" style="margin-bottom:8px">Food Type Categories</div>
+      <div class="tag-list" id="foodTypeTags">${foodTags}</div>
+      <div class="add-tag-row">
+        <input id="newFoodInput" type="text" placeholder="Add new food type…" onkeydown="if(event.key==='Enter')addFoodType()" />
+        <button class="btn btn-primary" style="padding:8px 16px;flex:none" onclick="addFoodType()">Add</button>
+      </div>
+      <hr class="section-divider">
+      <div class="setting-label" style="margin-bottom:8px">Dining Style Categories</div>
+      <div class="tag-list" id="diningStyleTags">${styles}</div>
+      <div class="add-tag-row">
+        <input id="newStyleInput" type="text" placeholder="Add new style…" onkeydown="if(event.key==='Enter')addDiningStyle()" />
+        <button class="btn btn-primary" style="padding:8px 16px;flex:none" onclick="addDiningStyle()">Add</button>
+      </div>
+      <hr class="section-divider">
+      <div class="setting-row" style="border-bottom:none">
+        <div>
+          <div class="setting-label">Reset All Weights</div>
+          <div class="setting-sub">Clear all Avoid Repeats weighting and start fresh</div>
+        </div>
+        <button class="btn btn-danger" style="padding:7px 14px;font-size:0.8rem;flex:none" onclick="resetWeightsConfirm()">Do It</button>
+      </div>
+    </div>
+  `);
+}
+
+function toggleThemeInSettings() {
+  toggleTheme();
+  const t = document.getElementById('themeToggle');
+  if (t) t.className = `toggle ${state.theme==='light'?'on':''}`;
+}
+
+function adjustSetting(key, delta) {
+  if (key === 'avoidRepeats') {
+    state.settings.avoidRepeats = Math.max(1, Math.min(20, state.settings.avoidRepeats + delta));
+    document.getElementById('avoidRepeatsVal').textContent = state.settings.avoidRepeats;
+  } else if (key === 'regularModifier') {
+    state.settings.regularModifier = Math.max(10, Math.min(100, state.settings.regularModifier + delta));
+    document.getElementById('regularModifierVal').textContent = state.settings.regularModifier + '%';
+  }
+  saveState();
+}
+
+function addFoodType() {
+  const input = document.getElementById('newFoodInput');
+  const val = input.value.trim();
+  if (!val) return;
+  if (state.foodTypes.includes(val)) { showToast('Already exists'); return; }
+  state.foodTypes.push(val);
+  state.filters.foodTypes.push(val);
+  saveState();
+  renderFilters();
+  input.value = '';
+  renderSettingsModal();
+}
+
+function removeFoodType(type) {
+  state.foodTypes = state.foodTypes.filter(t => t !== type);
+  state.filters.foodTypes = state.filters.foodTypes.filter(t => t !== type);
+  // update any restaurants using this type
+  state.restaurants.forEach(r => { if (r.foodType === type) r.foodType = state.foodTypes[0] || ''; });
+  saveState();
+  renderFilters();
+  renderSettingsModal();
+}
+
+function addDiningStyle() {
+  const input = document.getElementById('newStyleInput');
+  const val = input.value.trim();
+  if (!val) return;
+  if (state.diningStyles.includes(val)) { showToast('Already exists'); return; }
+  state.diningStyles.push(val);
+  state.filters.diningStyles.push(val);
+  saveState();
+  renderFilters();
+  input.value = '';
+  renderSettingsModal();
+}
+
+function removeDiningStyle(style) {
+  state.diningStyles = state.diningStyles.filter(s => s !== style);
+  state.filters.diningStyles = state.filters.diningStyles.filter(s => s !== style);
+  state.restaurants.forEach(r => { if (r.diningStyle === style) r.diningStyle = state.diningStyles[0] || ''; });
+  saveState();
+  renderFilters();
+  renderSettingsModal();
+}
+
+// ── HISTORY MODAL ──
+function openHistory() {
+  const entries = state.selectionHistory;
+  const rows = entries.length === 0
+    ? '<div class="history-empty">No selections yet.</div>'
+    : entries.map((h, i) => {
+        const d = new Date(h.timestamp);
+        const dateStr = d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+        const timeStr = d.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
+        return `<div class="history-entry">
+          <div class="history-entry-num">${i+1}</div>
+          <div style="flex:1;padding:0 10px">
+            <div class="history-entry-name">${h.name}</div>
+            <div class="history-entry-meta">${h.foodType} · ${h.diningStyle}</div>
+          </div>
+          <div class="history-entry-date">${dateStr}<br>${timeStr}</div>
+        </div>`;
+      }).join('');
+
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Recent Selections</div>
+      <button class="icon-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">${rows}</div>
+  `);
+}
+
+// ── RESET WEIGHTS ──
+function resetWeightsConfirm() {
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Reset All Weights</div>
+      <button class="icon-btn" onclick="renderSettingsModal()">←</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text2);font-size:0.9rem;line-height:1.6">
+        This will erase all current weighting used to avoid repeat suggestions. Are you sure?
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="renderSettingsModal()">No</button>
+      <button class="btn btn-danger" onclick="doResetWeights()">Yes</button>
+    </div>
+  `);
+}
+
+function doResetWeights() {
+  state.selectedAt = {};
+  state.cycleCount = 0;
+  // history is preserved intentionally
+  saveState();
+  renderSettingsModal();
+  showToast('All weights reset');
+}
+
+// ── SYNC MODAL ──
+function openSync() {
+  const signedIn = !!driveState.accessToken;
+  const email = driveState.userEmail || '';
+
+  showModal(`
+    <div class="modal-header">
+      <div class="modal-title">Sync & Backup</div>
+      <button class="icon-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="tabs">
+        <div class="tab active" id="tabDrive" onclick="switchSyncTab('drive')">Google Drive</div>
+        <div class="tab" id="tabBackup" onclick="switchSyncTab('backup')">Backup</div>
+      </div>
+      <div id="drivePane">
+        ${signedIn ? `
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Signed in</div>
+              <div class="toggle-sub">${email}</div>
+            </div>
+            <button class="btn btn-ghost" style="padding:6px 14px;font-size:0.8rem" onclick="signOut()">Sign Out</button>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px">
+            <button class="btn btn-primary" style="flex:1" onclick="loadFromDrive().then(()=>{ showToast('Refreshed from Drive'); closeModal(); })">↓ Pull from Drive</button>
+            <button class="btn btn-ghost" style="flex:1" onclick="saveToDrive().then(()=>{ showToast('Pushed to Drive'); closeModal(); })">↑ Push to Drive</button>
+          </div>
+          <p class="info-text" style="margin-top:12px">Changes save to Drive automatically within a few seconds. Use Pull to manually grab the latest from another device.</p>
+        ` : `
+          <p class="info-text" style="margin-bottom:20px">Sign in with Google to sync your data across all your devices automatically.</p>
+          <div style="display:flex;justify-content:center">
+            <button class="google-btn" onclick="signInWithGoogle()">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Sign in with Google
+            </button>
+          </div>
+          <p class="info-text" style="margin-top:16px;text-align:center">Each person signs in with their own Google account. Data is stored in the file owner's Google Drive and shared automatically.</p>
+        `}
+      </div>
+      <div id="backupPane" style="display:none">
+        <p class="info-text" style="margin-bottom:16px">Export your restaurant list and settings to a file, or restore from a previous backup.</p>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="exportData()">⬇ Export to File</button>
+        <label class="btn btn-ghost" style="width:100%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:12px;border-radius:10px;border:1px solid var(--border);color:var(--text2)">
+          ⬆ Import from File
+          <input type="file" accept=".json" style="display:none" onchange="handleImport(event)" />
+        </label>
+      </div>
+    </div>
+  `);
+}
+
+function switchSyncTab(tab) {
+  document.getElementById('tabDrive').className = `tab ${tab==='drive'?'active':''}`;
+  document.getElementById('tabBackup').className = `tab ${tab==='backup'?'active':''}`;
+  document.getElementById('drivePane').style.display = tab==='drive'?'block':'none';
+  document.getElementById('backupPane').style.display = tab==='backup'?'block':'none';
+}
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (file) importData(file);
+}
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+loadState();
+// Ensure filter arrays are populated on first-ever load
+if (state.filters.foodTypes.length === 0) {
+  state.filters.foodTypes = [...state.foodTypes];
+}
+if (state.filters.diningStyles.length === 0) {
+  state.filters.diningStyles = [...state.diningStyles];
+}
+// Seed test restaurants if list is empty
+if (state.restaurants.length === 0) {
+  const testData = [
+    { foodType: 'American',       diningStyle: 'Sit-down / Dine-in',          flag: 'regular'    },
+    { foodType: 'Italian',        diningStyle: 'Takeout',                      flag: 'occasional' },
+    { foodType: 'Chinese',        diningStyle: 'Delivery',                     flag: 'occasional' },
+    { foodType: 'Japanese',       diningStyle: 'Sit-down / Dine-in',           flag: 'regular'    },
+    { foodType: 'Mexican',        diningStyle: 'Fast Food / Counter service',  flag: 'occasional' },
+    { foodType: 'Thai',           diningStyle: 'Takeout',                      flag: 'regular'    },
+    { foodType: 'BBQ',            diningStyle: 'Sit-down / Dine-in',           flag: 'occasional' },
+    { foodType: 'Pizza',          diningStyle: 'Delivery',                     flag: 'regular'    },
+    { foodType: 'Indian',         diningStyle: 'Takeout',                      flag: 'occasional' },
+    { foodType: 'Mediterranean',  diningStyle: 'Fast Food / Counter service',  flag: 'occasional' },
+  ];
+  testData.forEach((d, i) => {
+    state.restaurants.push({ id: (Date.now() + i).toString(), name: `Test Restaurant ${i + 1}`, ...d });
+  });
+  saveLocalState();
+}
+applyTheme();
+renderFilters();
+renderMain();
+// Init Google Auth after page is ready
+window.addEventListener('load', () => initGoogleAuth());
+</script>
+</body>
+</html>
