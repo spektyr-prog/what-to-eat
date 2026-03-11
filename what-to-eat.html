@@ -562,6 +562,7 @@ let state = {
 const CLIENT_ID = '411226989831-1gald3di1p11d7298vhko0odg0icbmqe.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 const FILE_NAME = 'what-to-eat-data.json';
+const DRIVE_FILE_ID = '1MqfTInrn3eC7_M4J6KoSFz_4HPMWYQc4'; // Canonical file ID — all devices use this
 
 let driveState = {
   accessToken: null,
@@ -656,40 +657,9 @@ function saveDriveState() {
 
 // ── FIND OR CREATE FILE ──
 async function findOrCreateDriveFile() {
-  try {
-    // Search ALL matching files (owned + shared) and pick the largest/newest
-    // to avoid creating duplicates when multiple devices are in use
-    const resp = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'+and+trashed=false&fields=files(id,name,size,modifiedTime,owners)&orderBy=modifiedTime+desc`,
-      { headers: { Authorization: 'Bearer ' + driveState.accessToken } }
-    );
-    const data = await resp.json();
-    if (data.files && data.files.length > 0) {
-      // Prefer owned files first, then most recently modified
-      const owned = data.files.filter(f => f.owners && f.owners.some(o => o.me));
-      const best = owned.length > 0 ? owned[0] : data.files[0];
-      driveState.fileId = best.id;
-      // If there are duplicates, log it but don't delete — user should clean up manually
-      if (data.files.length > 1) {
-        console.warn('Multiple what-to-eat-data.json files found in Drive. Using most recent:', best.id);
-      }
-      return;
-    }
-    // Nothing found — create a new file (first-time setup only)
-    const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + driveState.accessToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ name: FILE_NAME, mimeType: 'application/json' })
-    });
-    const createData = await createResp.json();
-    driveState.fileId = createData.id;
-    saveDriveState();
-  } catch(e) {
-    setSyncStatus('error', 'Drive error');
-  }
+  // Always use the canonical hardcoded file ID — eliminates multi-device duplicate creation
+  driveState.fileId = DRIVE_FILE_ID;
+  saveDriveState();
 }
 
 // ── LOAD FROM DRIVE ──
